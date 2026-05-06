@@ -14,6 +14,9 @@ const NAV = [
     { id: 'ep-node',     label: 'Get node',          badge: 'GET' },
     { id: 'ep-readings', label: 'Reading history',   badge: 'GET' },
   ]},
+  { group: 'Event Log (REST)', items: [
+    { id: 'ep-event-history', label: 'Event history',  badge: 'GET' },
+  ]},
   { group: 'Server-Sent Events', items: [
     { id: 'sse-overview',  label: 'Overview',       badge: 'SSE' },
     { id: 'ev-heartbeat',  label: 'heartbeat' },
@@ -166,7 +169,7 @@ const tabs = {
       label: 'JavaScript',
       lang:  'javascript',
       code:
-`const es = new EventSource("http://${HOST}/api/v1/events");
+`const es = new EventSource("http://${HOST}/api/v1/events/stream");
 
 es.addEventListener("heartbeat", e => {
   const { node_id, timestamp } = JSON.parse(e.data);
@@ -201,7 +204,7 @@ const ALL_EVENTS = ["heartbeat", "flood_level", "battery_low", "node_offline"];
 
 export function useFloodWatch(apiBase, onEvent) {
   useEffect(() => {
-    const es = new EventSource(\`\${apiBase}/api/v1/events\`);
+    const es = new EventSource(\`\${apiBase}/api/v1/events/stream\`);
     ALL_EVENTS.forEach(type =>
       es.addEventListener(type, e => onEvent(type, JSON.parse(e.data)))
     );
@@ -219,10 +222,10 @@ export function useFloodWatch(apiBase, onEvent) {
       lang:  'bash',
       code:
 `# Stream all events
-curl -N http://${HOST}/api/v1/events
+curl -N http://${HOST}/api/v1/events/stream
 
 # Flood + offline only
-curl -N "http://${HOST}/api/v1/events?types=flood_level,node_offline"`,
+curl -N "http://${HOST}/api/v1/events/stream?types=flood_level,node_offline"`,
     },
     {
       label: 'Python',
@@ -417,11 +420,34 @@ export default function App() {
           </EndpointCard>
         </Section>
 
+        {/* ── Event history ── */}
+        <Section id="ep-event-history">
+          <H2>Event history</H2>
+          <EndpointCard
+            method="GET"
+            path="/api/v1/events/history"
+            description="Paginated log of all events emitted by any service (parser, health-checker, etc.), newest first. Events are retained for 30 days then auto-deleted by MongoDB TTL."
+          >
+            <SchemaTable rows={[
+              ['type',      'string',  'Filter by event type: heartbeat, flood_level, battery_low, node_offline'],
+              ['node_id',   'string',  'Filter by node ID'],
+              ['page',      'integer', '1-based page number (default: 1)'],
+              ['page_size', 'integer', 'Results per page, max 200 (default: 50)'],
+            ]} />
+            <CodeTabs tabs={[
+              { label: 'curl', lang: 'bash',
+                code: `# All flood events\ncurl "http://${HOST}/api/v1/events/history?type=flood_level"\n\n# All events for one node\ncurl "http://${HOST}/api/v1/events/history?node_id=SUTS_White"` },
+              { label: 'Response', lang: 'json',
+                code: `{\n  "page": 1,\n  "page_size": 50,\n  "filters": { "type": "flood_level", "node_id": null },\n  "data": [\n    {\n      "type":             "flood_level",\n      "node_id":          "SUTS_White",\n      "water_level":      2,\n      "water_level_prev": 0,\n      "float_bits":       "010",\n      "lat":              1.559200,\n      "lng":              110.359000,\n      "timestamp":        "2026-05-06T14:32:11.045000+00:00"\n    }\n  ]\n}` },
+            ]} />
+          </EndpointCard>
+        </Section>
+
         {/* ── SSE Overview ── */}
         <Section id="sse-overview">
           <H2>Server-Sent Events</H2>
           <P>
-            Connect to <InlineCode>/api/v1/events</InlineCode> using the browser&apos;s built-in{' '}
+            Connect to <InlineCode>/api/v1/events/stream</InlineCode> using the browser&apos;s built-in{' '}
             <a href="https://developer.mozilla.org/en-US/docs/Web/API/EventSource" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">
               EventSource API
             </a>{' '}
@@ -430,7 +456,7 @@ export default function App() {
           </P>
           <Callout>
             <strong className="text-slate-200">Endpoint</strong><br />
-            <InlineCode>GET /api/v1/events?types=heartbeat,flood_level,battery_low,node_offline</InlineCode>
+            <InlineCode>GET /api/v1/events/stream?types=heartbeat,flood_level,battery_low,node_offline</InlineCode>
           </Callout>
           <CodeTabs tabs={tabs.sseJs} />
         </Section>

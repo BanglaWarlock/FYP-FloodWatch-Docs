@@ -11,7 +11,7 @@ const EVENT_COLORS = {
 const ALL_TYPES = ['heartbeat', 'flood_level', 'battery_low', 'node_offline']
 
 export default function LiveDemo() {
-  const [url, setUrl]       = useState('http://localhost:8000/api/v1/events')
+  const [url, setUrl]       = useState('http://localhost:8000/api/v1/events/stream')
   const [status, setStatus] = useState('disconnected')
   const [events, setEvents] = useState([])
   const [filters, setFilters] = useState(

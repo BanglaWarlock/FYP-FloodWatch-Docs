@@ -50,17 +50,17 @@ export function CodeTabs({ tabs }) {
   }
 
   return (
-    <div className="rounded-lg overflow-hidden border border-slate-800 mt-4">
+    <div className="rounded-lg overflow-hidden border border-gray-200 dark:border-slate-800 mt-4">
       {/* Tab bar */}
-      <div className="flex items-center bg-slate-900 border-b border-slate-800 pl-1 pr-3">
+      <div className="flex items-center bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 pl-1 pr-3">
         {tabs.map((tab, i) => (
           <button
             key={i}
             onClick={() => setActive(i)}
             className={`px-3 py-2.5 text-xs font-medium border-b-2 -mb-px transition-colors ${
               active === i
-                ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-300'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-300'
             }`}
           >
             {tab.label}
@@ -68,7 +68,7 @@ export function CodeTabs({ tabs }) {
         ))}
         <button
           onClick={copy}
-          className="ml-auto text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1"
+          className="ml-auto text-xs text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-300 transition-colors flex items-center gap-1"
         >
           {copied ? (
             <><CheckIcon /> Copied</>

@@ -25,7 +25,14 @@ export default function LiveDemo() {
   function buildUrl() {
     const params = new URLSearchParams()
     params.set('dataset', dataset)
-    const base = host.startsWith('http') ? host : `http://${host}`
+    // Use a relative URL when the host matches the default — this lets the
+    // Vite dev proxy (local) and Vercel rewrite (deployed) forward the request
+    // over HTTPS, avoiding mixed-content blocks.
+    const trimmed = host.trim()
+    if (!trimmed || trimmed === BASE_HOST) {
+      return `/api/v1/events/stream?${params}`
+    }
+    const base = trimmed.startsWith('http') ? trimmed : `http://${trimmed}`
     return `${base}/api/v1/events/stream?${params}`
   }
 

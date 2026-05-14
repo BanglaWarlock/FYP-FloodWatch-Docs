@@ -7,7 +7,7 @@ function useTheme() {
   const [dark, setDark] = useState(() => {
     const stored = localStorage.getItem('fw-theme')
     if (stored) return stored === 'dark'
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
+    return false // default to light theme
   })
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
@@ -36,12 +36,14 @@ const NAV = [
     { id: 'ep-events',    label: 'Event history',       badge: 'GET' },
   ]},
   { group: 'Server-Sent Events', items: [
-    { id: 'sse-overview', label: 'Overview',            badge: 'SSE' },
-    { id: 'ev-heartbeat', label: 'heartbeat' },
-    { id: 'ev-flood',     label: 'flood_level' },
-    { id: 'ev-alert',     label: 'alert' },
-    { id: 'ev-weather',   label: 'weather_update' },
-    { id: 'sse-live',     label: 'Live Demo' },
+    { id: 'sse-overview',    label: 'Overview',              badge: 'SSE' },
+    { id: 'ev-heartbeat',    label: 'heartbeat' },
+    { id: 'ev-flood',        label: 'flood_level' },
+    { id: 'ev-alert',        label: 'alert' },
+    { id: 'ev-weather',      label: 'weather_update' },
+    { id: 'ev-node-status',  label: 'node_online / offline' },
+    { id: 'ev-announce',     label: 'node_announce' },
+    { id: 'sse-live',        label: 'Live Demo' },
   ]},
   { group: 'Schema', items: [
     { id: 'schema-node',    label: 'Node object' },
@@ -131,6 +133,7 @@ function EventCard({ name, color, description, children }) {
     amber:  'text-amber-700 dark:text-amber-400  border-amber-200 dark:border-amber-900/60  bg-amber-50  dark:bg-amber-950/20',
     sky:    'text-sky-700   dark:text-sky-400    border-sky-200   dark:border-sky-900/60    bg-sky-50    dark:bg-sky-950/20',
     slate:  'text-gray-600  dark:text-slate-400  border-gray-200  dark:border-slate-800     bg-gray-50   dark:bg-slate-900/30',
+    violet: 'text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-900/60 bg-violet-50 dark:bg-violet-950/20',
   }
   return (
     <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-slate-800 mb-6">
@@ -178,7 +181,7 @@ const HOST = '159.223.70.28'
 const tabs = {
   stats: [
     { label: 'curl', lang: 'bash', code: `curl http://${HOST}/api/v1/stats` },
-    { label: 'Response', lang: 'json', code: `{\n  "total_villages":    2,\n  "total_river_nodes": 8,\n  "nodes_online":      6,\n  "nodes_offline":     2,\n  "total_alerts":      143,\n  "last_updated":      "2026-05-14T06:12:00Z",\n  "dataset":           "real"\n}` },
+    { label: 'Response', lang: 'json', code: `{\n  "total_villages":          2,\n  "total_river_nodes":       8,\n  "total_master_nodes":      2,\n  "nodes_online":            6,\n  "nodes_offline":           2,\n  "total_alerts":            143,\n  "total_messages_received": 2041,\n  "alerts_by_type": {\n    "flood":            87,\n    "battery_low":      42,\n    "battery_critical": 14\n  },\n  "last_updated": "2026-05-14T06:12:00Z"\n}` },
   ],
   villages: [
     { label: 'curl', lang: 'bash', code: `# Real villages only (default)\ncurl http://${HOST}/api/v1/villages\n\n# Include sample villages\ncurl "http://${HOST}/api/v1/villages?dataset=all"` },
@@ -194,7 +197,7 @@ const tabs = {
   ],
   readings: [
     { label: 'curl', lang: 'bash', code: `# Latest 50 readings\ncurl "http://${HOST}/api/v1/nodes/SOS-A1/readings"\n\n# GPS readings only for today\ncurl "http://${HOST}/api/v1/nodes/SOS-A1/readings?gps_only=true&from=2026-05-14T00:00:00Z"\n\n# Custom date range\ncurl "http://${HOST}/api/v1/nodes/SOS-A1/readings?from=2026-05-01T00:00:00Z&to=2026-05-14T00:00:00Z"` },
-    { label: 'Response', lang: 'json', code: `{\n  "node_id":   "SOS-A1",\n  "page":      1,\n  "page_size": 50,\n  "total":     248,\n  "data": [\n    {\n      "timestamp":       "2026-05-14T06:10:32Z",\n      "water_level":     1,\n      "float_bits":      1,\n      "battery_voltage": 4.02,\n      "gps_fix":         true,\n      "lat":             6.6492,\n      "lng":             117.0700,\n      "rssi":            -78,\n      "snr":             8.4\n    }\n  ]\n}` },
+    { label: 'Response', lang: 'json', code: `{\n  "node_id":   "SOS-A1",\n  "page":      1,\n  "page_size": 50,\n  "data": [\n    {\n      "timestamp":       "2026-05-14T06:10:32Z",\n      "water_level":     1,\n      "float_bits":      1,\n      "battery_voltage": 4.02,\n      "gps_fix":         true,\n      "lat":             6.6492,\n      "lng":             117.0700,\n      "rssi":            -78,\n      "snr":             8.4\n    }\n  ]\n}` },
   ],
   alerts: [
     { label: 'curl', lang: 'bash', code: `# All alerts\ncurl http://${HOST}/api/v1/alerts\n\n# Flood alerts for one village\ncurl "http://${HOST}/api/v1/alerts?village_id=PITAS-SOSOP&alert_type=flood"\n\n# Battery alerts this week\ncurl "http://${HOST}/api/v1/alerts?alert_type=battery_low&from=2026-05-07T00:00:00Z"` },
@@ -207,11 +210,11 @@ const tabs = {
   ],
   nodeSummary: [
     { label: 'curl', lang: 'bash', code: `# This month\ncurl "http://${HOST}/api/v1/nodes/SOS-A1/summary?period=month"\n\n# Custom range\ncurl "http://${HOST}/api/v1/nodes/SOS-A1/summary?from=2026-05-01T00:00:00Z&to=2026-05-14T00:00:00Z"\n\n# Sample data\ncurl "http://${HOST}/api/v1/nodes/SIM-SOS-A1/summary?dataset=sample"` },
-    { label: 'Response', lang: 'json', code: `{\n  "node_id": "SOS-A1",\n  "period":  "month",\n  "from":    "2026-05-01T00:00:00Z",\n  "to":      "2026-05-14T06:12:00Z",\n  "readings": {\n    "count":           672,\n    "avg_water_level": 1.4,\n    "max_water_level": 3,\n    "avg_battery_v":   3.88,\n    "min_battery_v":   3.30\n  },\n  "alerts_by_type": { "flood": 4, "battery_low": 2 }\n}` },
+    { label: 'Response', lang: 'json', code: `{\n  "node_id":         "SOS-A1",\n  "period":          "month",\n  "from":            "2026-05-01T00:00:00Z",\n  "to":              "2026-05-14T06:12:00Z",\n  "dataset":         "real",\n  "reading_count":   672,\n  "avg_water_level": 1.4,\n  "min_water_level": 0,\n  "max_water_level": 3,\n  "avg_battery_v":   3.88,\n  "min_battery_v":   3.30,\n  "first_reading":   "2026-05-01T00:00:12Z",\n  "last_reading":    "2026-05-14T06:10:32Z",\n  "total_alerts":    6,\n  "alerts_by_type":  { "flood": 4, "battery_low": 2 }\n}` },
   ],
   globalSummary: [
     { label: 'curl', lang: 'bash', code: `# Today across all real nodes\ncurl "http://${HOST}/api/v1/stats/summary?period=today"\n\n# Past week\ncurl "http://${HOST}/api/v1/stats/summary?period=week"\n\n# Include sample nodes\ncurl "http://${HOST}/api/v1/stats/summary?period=week&dataset=all"` },
-    { label: 'Response', lang: 'json', code: `{\n  "period": "week",\n  "from":   "2026-05-07T00:00:00Z",\n  "to":     "2026-05-14T06:12:00Z",\n  "peak_water_level":  3,\n  "total_readings":    4482,\n  "total_alerts":      27,\n  "top_nodes": [\n    { "node_id": "SOS-C3", "avg_water_level": 2.6, "count": 338 }\n  ],\n  "top_villages": [\n    { "village_id": "PITAS-SOSOP", "total_alerts": 19 }\n  ]\n}` },
+    { label: 'Response', lang: 'json', code: `{\n  "period":  "week",\n  "from":    "2026-05-07T00:00:00Z",\n  "to":      "2026-05-14T06:12:00Z",\n  "dataset": "real",\n  "peak_water_level":     3,\n  "total_readings":       4482,\n  "total_alerts":         27,\n  "alerts_by_type":       { "flood": 12, "battery_low": 9, "battery_critical": 6 },\n  "top_active_nodes": [\n    { "node_id": "SOS-C3", "readings": 338 }\n  ],\n  "top_alerted_villages": [\n    { "village_id": "PITAS-SOSOP", "alerts": 19 }\n  ]\n}` },
   ],
   sseJs: [
     { label: 'JavaScript', lang: 'javascript', code:
@@ -526,6 +529,7 @@ export default function App() {
           >
             <SchemaTable rows={[
               ['village_id', 'string',          'Filter to one village (optional)'],
+              ['status',     'online|offline',  'Filter by node status (optional)'],
               ['dataset',    'real|sample|all', 'Filter by data source (default: real)'],
             ]} />
             <CodeTabs tabs={tabs.nodes} />
@@ -536,6 +540,10 @@ export default function App() {
           >
             <SchemaTable rows={[
               ['dataset', 'real|sample|all', 'Allows querying sample nodes by ID (default: real)'],
+            ]} />
+            <CodeTabs tabs={[
+              { label: 'curl', lang: 'bash', code: `# Real node\ncurl http://${HOST}/api/v1/nodes/SOS-A1\n\n# Sample node\ncurl "http://${HOST}/api/v1/nodes/SIM-SOS-A1?dataset=sample"` },
+              { label: 'Response', lang: 'json', code: `{\n  "node_id":         "SOS-A1",\n  "village_id":      "PITAS-SOSOP",\n  "parent_id":       "SOS-MASTER-01",\n  "depth":           1,\n  "status":          "online",\n  "last_seen":       "2026-05-14T06:10:32Z",\n  "first_seen":      "2026-04-01T08:00:00Z",\n  "water_level":     1,\n  "float_bits":      1,\n  "battery_voltage": 4.02,\n  "gps_fix":         true,\n  "lat":             6.6492,\n  "lng":             117.0700,\n  "install_lat":     6.6492,\n  "install_lng":     117.0700,\n  "rssi":            -78,\n  "snr":             8.4\n}` },
             ]} />
           </EndpointCard>
         </Section>
@@ -641,7 +649,7 @@ export default function App() {
           >
             <CodeTabs tabs={[
               { label: 'curl', lang: 'bash', code: `curl "http://${HOST}/api/v1/villages/PITAS-SOSOP/summary?period=week"` },
-              { label: 'Response', lang: 'json', code: `{\n  "village_id": "PITAS-SOSOP",\n  "period": "week",\n  "nodes": [\n    {\n      "node_id": "SOS-A1",\n      "avg_water_level": 1.1,\n      "max_water_level": 2,\n      "alert_counts": { "flood": 0, "battery_low": 1 }\n    }\n  ]\n}` },
+              { label: 'Response', lang: 'json', code: `{\n  "village_id":     "PITAS-SOSOP",\n  "period":         "week",\n  "dataset":        "real",\n  "total_readings": 1820,\n  "total_alerts":   8,\n  "alerts_by_type": { "flood": 4, "battery_low": 4 },\n  "nodes": [\n    {\n      "node_id":         "SOS-A1",\n      "reading_count":   364,\n      "avg_water_level": 1.1,\n      "min_water_level": 0,\n      "max_water_level": 2,\n      "avg_battery_v":   3.91,\n      "min_battery_v":   3.30\n    }\n  ]\n}` },
             ]} />
           </EndpointCard>
 
@@ -659,7 +667,7 @@ export default function App() {
           <H2>Event history</H2>
           <EndpointCard
             path="/api/v1/events/history"
-            description="Paginated log of all events (announce, heartbeat, flood_level, alert). Retained 30 days by TTL."
+            description="Paginated log of node lifecycle events (node_online, node_offline, master_online, master_offline, announce). Retained 30 days by TTL."
           >
             <SchemaTable rows={[
               ['village_id', 'string',          'Filter by village (optional)'],
@@ -694,6 +702,16 @@ export default function App() {
           <Callout>
             <strong className="text-gray-900 dark:text-slate-200">Endpoint</strong><br />
             <InlineCode>GET /api/v1/events/stream?types=heartbeat,flood_level,alert&amp;dataset=real</InlineCode>
+            <br /><br />
+            <strong className="text-gray-900 dark:text-slate-200">Default types (sent when no </strong>
+            <InlineCode>types</InlineCode>
+            <strong className="text-gray-900 dark:text-slate-200"> param is given)</strong><br />
+            <InlineCode>heartbeat, flood_level, alert, node_online, node_offline, weather_update</InlineCode>
+            <br /><br />
+            <strong className="text-gray-900 dark:text-slate-200">Available but not in default</strong><br />
+            <InlineCode>node_announce</InlineCode> — request it explicitly via the <InlineCode>types</InlineCode> param.
+            <br />
+            <InlineCode>master_online</InlineCode>, <InlineCode>master_offline</InlineCode> — gateway-level events, rarely needed by clients.
           </Callout>
           <CodeTabs tabs={tabs.sseJs} />
         </Section>
@@ -820,6 +838,71 @@ data: {
           </EventCard>
         </Section>
 
+        {/* ── node_online / node_offline ── */}
+        <Section id="ev-node-status">
+          <H2>Event: node_online / node_offline</H2>
+          <EventCard name="node_online / node_offline" color="slate" description="Emitted when a river node's connectivity changes. node_online fires when the master reports the node came back; node_offline fires when the master reports it dropped, or when the health-checker times it out after the configured offline timeout.">
+            <CodeTabs tabs={[{ label: 'Payload', lang: 'json', code:
+`event: node_online
+data: {
+  "type":       "node_online",
+  "node_id":    "SOS-A1",
+  "village_id": "PITAS-SOSOP",
+  "timestamp":  "2026-05-14T06:10:32Z"
+}
+
+event: node_offline
+data: {
+  "type":       "node_offline",
+  "node_id":    "SOS-A1",
+  "village_id": "PITAS-SOSOP",
+  "timestamp":  "2026-05-14T06:11:45Z"
+}` }]} />
+            <SchemaTable rows={[
+              ['node_id',    'string',   'Node that changed status'],
+              ['village_id', 'string',   'Village the node belongs to'],
+              ['timestamp',  'ISO 8601', 'UTC time the status change was processed'],
+            ]} />
+            <Callout variant="green">
+              Both <InlineCode>node_online</InlineCode> and <InlineCode>node_offline</InlineCode> are
+              included in the default <InlineCode>types</InlineCode> — no extra parameter needed.
+              Status changes are also logged to <InlineCode>/api/v1/events/history</InlineCode>.
+            </Callout>
+          </EventCard>
+        </Section>
+
+        {/* ── node_announce ── */}
+        <Section id="ev-announce">
+          <H2>Event: node_announce</H2>
+          <EventCard name="node_announce" color="violet" description="Emitted when a river node completes GPS calibration and announces its install position. Carries the calibrated lat/lng used as the node's permanent install reference, plus its position in the LoRa mesh.">
+            <CodeTabs tabs={[{ label: 'Payload', lang: 'json', code:
+`event: node_announce
+data: {
+  "type":       "node_announce",
+  "node_id":    "SOS-A1",
+  "village_id": "PITAS-SOSOP",
+  "depth":      1,
+  "parent":     "SOS-MASTER-01",
+  "lat":        6.6492,
+  "lng":        117.0700,
+  "timestamp":  "2026-05-14T06:10:32Z"
+}` }]} />
+            <SchemaTable rows={[
+              ['depth',     'integer', 'Hops from master in the LoRa mesh (1 = direct connection)'],
+              ['parent',    'string',  'Node ID of the immediate relay (master or intermediate node)'],
+              ['lat / lng', 'number',  'Calibrated install-position GPS coordinates', true],
+            ]} />
+            <Callout variant="amber">
+              <InlineCode>node_announce</InlineCode> is <strong>not</strong> in the default{' '}
+              <InlineCode>types</InlineCode> list. To receive it, pass it explicitly:{' '}
+              <InlineCode>{'?types=heartbeat,flood_level,alert,node_online,node_offline,node_announce,weather_update'}</InlineCode>.
+              The announce event stores <InlineCode>lat/lng</InlineCode> as{' '}
+              <InlineCode>install_lat/install_lng</InlineCode> on the node record (the permanent
+              reference position used by GPS movement alerts).
+            </Callout>
+          </EventCard>
+        </Section>
+
         {/* ── Live Demo ── */}
         <Section id="sse-live">
           <H2>Live Demo</H2>
@@ -871,6 +954,8 @@ data: {
             ['district',       'string',   'Administrative district',                            true],
             ['state',          'string',   'Malaysian state',                                    true],
             ['total_nodes',    'integer',  'River nodes registered to this village',             false],
+            ['nodes_online',   'integer',  'Nodes currently online',                             false],
+            ['nodes_offline',  'integer',  'Nodes currently offline',                            false],
             ['total_alerts',   'integer',  'All-time alert count',                               false],
             ['alerts_by_type', 'object',   'Alert counts keyed by alert_type',                  false],
             ['weather',        'object',   'Latest weather snapshot (see weather_update event)', true],
@@ -889,13 +974,16 @@ data: {
             ['village_id',      'string',   'Village of the node',                               false],
             ['timestamp',       'ISO 8601', 'UTC time the alert was processed',                  false],
             ['alert_type',      'string',   'flood | water_fall | battery_low | battery_critical | gps_moved', false],
-            ['level',           '0|1|2|3',  'Water level (flood alerts only)',                   true],
+            ['level',           '0|1|2|3',  'Water level at trigger time (flood alerts only)',    true],
             ['float_bits',      'integer',  'Float bitmask (flood alerts only)',                 true],
+            ['water_level',     '0|1|2|3',  'Computed water level from float_bits (flood only)', true],
             ['battery_voltage', 'number',   'Battery voltage at alert time',                     false],
             ['gps_fix',         'boolean',  'Whether lat/lng are valid',                         false],
             ['lat / lng',       'number',   'GPS at alert time',                                 true],
             ['dist_m',          'number',   'Metres from install position (gps_moved only)',     true],
             ['home_lat/lng',    'number',   'Install position GPS (gps_moved only)',             true],
+            ['rssi',            'integer',  'LoRa received signal strength at alert time (dBm)', true],
+            ['snr',             'number',   'LoRa signal-to-noise ratio at alert time (dB)',     true],
             ['weather_at_alert','object',   'Village weather snapshot at alert time',            true],
           ]} />
         </Section>
